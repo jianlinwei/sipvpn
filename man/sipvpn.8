@@ -1,0 +1,109 @@
+.TH SIPVPN 8 "Mar 19, 2015"
+.SH NAME
+sipvpn \- Simple stateless VPN
+
+.SH SYNOPSIS
+\fBsipvpn\fR [options...]
+
+.SH DESCRIPTION
+\fBsipvpn\fR is a simple stateless VPN.
+.PP
+
+.SH OPTIONS
+.TP
+.B \-h, \-\-help
+print a help message and exit
+.TP
+.B \-c, \-\-config \fI<file>\fR
+config file
+.TP
+.B \-d, \-\-daemon
+daemonize after initialization
+.TP
+.B \-\-pidfile \fI<file>\fR
+PID file
+.TP
+.B \-\-logfile \fI<file>\fR
+Log file
+.TP
+.B \-v, \-\-verbose
+verbose logging
+.TP
+.B \-V, \-\-version
+print version and exit
+
+
+.SH CONFIG FILE
+
+.TP
+\fIuser=\fR
+.br
+user to set privilege to
+
+.TP
+\fImode=\fR
+.br
+server or client
+
+.TP
+\fIserver=\fR
+.br
+server listen address
+
+.TP
+\fIport=\fR
+.br
+server listen port, default: 1205
+
+.TP
+\fIpassword=\fR
+.br
+password to use
+
+.TP
+\fItunif=\fR
+.br
+tunnel device name, default: vpn0
+
+.TP
+\fImtu=\fR
+.br
+the MTU of VPN device, default: 1400
+
+.TP
+\fIup=\fR
+.br
+hook script to run after initialization
+
+.TP
+\fIdown=\fR
+.br
+hook script to run before quit
+
+.SH EXAMPLE
+
+Sample client config file:
+
+    mode=client
+    server=1.2.3.4
+    port=1205
+    password=zwa2MAgkoFP7
+    tunif=vpn0
+    mtu=1400
+    up=/etc/sipvpn/hook/client_up.sh
+    down=/etc/sipvpn/hook/client_down.sh
+
+Sample server config file:
+
+    mode=client
+    server=0.0.0.0
+    port=1205
+    password=zwa2MAgkoFP7
+    tunif=vpn0
+    mtu=1400
+    up=/etc/sipvpn/hook/server_up.sh
+    down=/etc/sipvpn/hook/server_down.sh
+
+.SH AUTHOR
+.PP
+This manual page was written by Xiaoxiao Pu <i@xiaoxiao.im>.
