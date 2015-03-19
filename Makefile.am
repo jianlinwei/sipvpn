@@ -13,7 +13,7 @@ man_MANS = man/sipvpn.8
 systemddir=$(libdir)/systemd/system
 systemd_DATA=contrib/systemd/sipvpn@.service
 
-sampledir=$(sysconfdir)/sample
+sampledir=$(sysconfdir)/sipvpn/sample
 sample_DATA=contrib/sample/client.conf \
             contrib/sample/client_down.sh \
             contrib/sample/client_up.sh \
