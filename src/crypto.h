@@ -1,5 +1,5 @@
 /*
- * encrypt.h - encryption and decryption
+ * crypto.h - encryption and decryption
  *
  * Copyright (C) 2014 - 2015, Xiaoxiao <i@xiaoxiao.im>
  *
@@ -17,11 +17,12 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef ENCRYPT_H
-#define ENCRYPT_H
+#ifndef CRYPTO_H
+#define CRYPTO_H
 
 #include <stddef.h>
-extern void encrypt(void *out, void *in, size_t len, const void *key, size_t key_len);
-extern int decrypt(void *out, void *in, size_t len, const void *key, size_t key_len);
+extern void crypto_set_key(const void *_key);
+extern void crypto_encrypt(void *buf, size_t len);
+extern int crypto_decrypt(void *buf, size_t len);
 
-#endif // ENCRYPT_H
+#endif // CRYPTO_H

@@ -99,7 +99,7 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_sipvpn_OBJECTS = conf.$(OBJEXT) encrypt.$(OBJEXT) log.$(OBJEXT) \
+am_sipvpn_OBJECTS = conf.$(OBJEXT) crypto.$(OBJEXT) log.$(OBJEXT) \
 	main.$(OBJEXT) md5.$(OBJEXT) tunif.$(OBJEXT) utils.$(OBJEXT) \
 	vpn.$(OBJEXT)
 sipvpn_OBJECTS = $(am_sipvpn_OBJECTS)
@@ -249,8 +249,8 @@ top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 AM_CFLAGS = -pipe -W -Wall -Wno-unused-parameter -fno-strict-aliasing
 sipvpn_SOURCES = \
-    conf.c  encrypt.c  log.c  main.c  md5.c  tunif.c  utils.c  vpn.c \
-    conf.h  encrypt.h  log.h  md5.h  tunif.h  utils.h  vpn.h
+    conf.c  crypto.c  log.c  main.c  md5.c  tunif.c  utils.c  vpn.c \
+    conf.h  crypto.h  log.h  md5.h  tunif.h  utils.h  vpn.h
 
 sipvpn_LDADD = 
 all: all-am
@@ -340,7 +340,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/conf.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/encrypt.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/crypto.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/log.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/main.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/md5.Po@am__quote@

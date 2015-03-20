@@ -1,5 +1,5 @@
 /*
- * log.h - log
+ * log.h
  *
  * Copyright (C) 2014 - 2015, Xiaoxiao <i@xiaoxiao.im>
  *

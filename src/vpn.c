@@ -27,7 +27,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include "conf.h"
-#include "encrypt.h"
+#include "crypto.h"
 #include "log.h"
 #include "tunif.h"
 #include "utils.h"
@@ -44,8 +44,7 @@ static struct
 	socklen_t addrlen;
 } remote;
 
-static uint8_t udp_buf[MTU_MAX + OVERHEAD_LEN];
-static uint8_t tun_buf[MTU_MAX];
+static uint8_t buf[IV_LEN + MTU_MAX];
 
 int vpn_init(const conf_t *config)
 {
@@ -54,6 +53,9 @@ int vpn_init(const conf_t *config)
 	conf = config;
 
 	LOG("starting sipvpn %s", (conf->mode==server)?"server":"client");
+
+	// set crypto key
+	crypto_set_key(conf->key);
 
 	// 初始化 UDP socket
 	struct addrinfo hints;
@@ -163,7 +165,7 @@ int vpn_run(void)
 		if (FD_ISSET(tun, &readset))
 		{
 			// 从 tun 设备读取 IP 包
-			n = tun_read(tun, tun_buf, conf->mtu);
+			n = tun_read(tun, buf + IV_LEN, conf->mtu);
 			if (n < 0)
 			{
 				if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -183,10 +185,10 @@ int vpn_run(void)
 			if (remote.addrlen != 0)
 			{
 				// 加密
-				encrypt(udp_buf, tun_buf, n, conf->key, conf->key_len);
+				crypto_encrypt(buf, n);
 
 				// 发送 UDP 包
-				n = sendto(sock, udp_buf, n + OVERHEAD_LEN, 0,
+				n = sendto(sock, buf, n + IV_LEN, 0,
 				           (struct sockaddr *)&remote.addr, remote.addrlen);
 				if (n <= 0)
 				{
@@ -205,7 +207,7 @@ int vpn_run(void)
 		if (FD_ISSET(sock, &readset))
 		{
 			// 读取 UDP 包
-			n = recvfrom(sock, udp_buf, conf->mtu + OVERHEAD_LEN, 0,
+			n = recvfrom(sock, buf, conf->mtu + IV_LEN, 0,
 			             (struct sockaddr *)&remote.addr, &remote.addrlen);
 			if (n < 0)
 			{
@@ -224,13 +226,13 @@ int vpn_run(void)
 			}
 
 			// 解密
-			if (decrypt(tun_buf, udp_buf, n, conf->key, conf->key_len) != 0)
+			if (crypto_decrypt(buf, n) != 0)
 			{
 				LOG("invalid packet, drop");
 			}
 			else
 			{
-				n = tun_write(tun, tun_buf, n - OVERHEAD_LEN);
+				n = tun_write(tun, buf + IV_LEN, n - IV_LEN);
 				if (n < 0)
 				{
 					if (errno == EAGAIN || errno == EWOULDBLOCK)

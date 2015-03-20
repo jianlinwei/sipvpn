@@ -20,7 +20,7 @@
 #ifndef CONF_H
 #define CONF_H
 
-#define OVERHEAD_LEN 16
+#define IV_LEN 16
 #define MTU_MAX 9000
 
 typedef enum
@@ -34,13 +34,12 @@ typedef struct
 	int daemon;
 	vpnmode_t mode;
 	int mtu;
-	int key_len;
 	char user[16];
 	char pidfile[64];
 	char logfile[64];
 	char server[64];
 	char port[16];
-	char key[64];
+	char key[16];
 	char tunif[32];
 	char up[64];
 	char down[64];

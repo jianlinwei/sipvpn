@@ -22,13 +22,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "conf.h"
+#include "md5.h"
 
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #else
 #  define PACKAGE "sipvpn"
 #  define PACKAGE_BUGREPORT "https://github.com/XiaoxiaoPu/sipvpn/issues"
-#  defien VERSION "0.1.0"
+#  define VERSION "0.1.0"
 #endif
 
 #define LINE_MAX 1024
@@ -140,7 +141,7 @@ int read_conf(const char *file, conf_t *conf)
 		else if (strcmp(key, "mtu") == 0)
 		{
 			conf->mtu = atoi(value);
-			if (conf->mtu < 68 + OVERHEAD_LEN)
+			if (conf->mtu < 68 + IV_LEN)
 			{
 				fprintf(stderr, "mtu too small\n");
 				fclose(f);
@@ -155,8 +156,7 @@ int read_conf(const char *file, conf_t *conf)
 		}
 		else if (strcmp(key, "password") == 0)
 		{
-			_strncpy(conf->key, value, sizeof(conf->key));
-			conf->key_len = strlen(conf->key);
+			md5(conf->key, value, strlen(value));
 		}
 		else if (strcmp(key, "tunif") == 0)
 		{

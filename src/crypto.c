@@ -20,7 +20,8 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "encrypt.h"
+#include "conf.h"
+#include "crypto.h"
 #include "md5.h"
 
 #ifdef HAVE_CONFIG_H
@@ -29,8 +30,8 @@
 
 #define SWAP(x, y) do {register uint8_t tmp = (x); (x) = (y); (y) = tmp; } while (0)
 
-// in, out 必须 sizeof(long) 字节对齐
-static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len)
+// stream 必须 sizeof(long) 字节对齐
+static void rc4(void *stream, size_t len, const void *key)
 {
 	register int i, j;
 	uint8_t s[256];
@@ -40,18 +41,46 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 	}
 	for (i = 0, j = 0; i < 256; i++)
 	{
-		j = (j + s[i] + ((uint8_t *)key)[i % key_len]) & 255;
+		j = (j + s[i] + ((uint8_t *)key)[i % 16]) & 255;
 		SWAP(s[i], s[j]);
 	}
 
 #if defined(__GNUC__) && defined(USE_ASSEMBLY)
 #  if defined(__amd64__) || defined(__x86_64__)
 #    define RC4_ASM 1
-	assert(((long)out & 0x07) == 0);
-	assert(((long)in & 0x07) == 0);
-	__asm__  (
+	assert(((long)stream & 0x07) == 0);
+	__asm__ __volatile__ (
+		/* 开头未对齐的部分，每次处理 1 字节 */
+		"cmpq %[stream], %[end]\n\t"
+		"jbe 6f\n\t"
+		"testq $7, %[stream]\n\t"
+		"je 2f\n\t"
+		"1:\n\t"
+		// i = (i + 1) & 255
+		"incl %[i]\n\t"
+		"movzbl %b[i], %[i]\n\t"
+		// j = (j + s[i] ) & 255
+		"movzbl (%[s], %q[i]), %%ecx\n\t"
+		"addb %%cl, %b[j]\n\t"
+		// SWAP(s[i], s[j])
+		// *((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255]; */
+		"movzbl (%[s], %q[j]), %%edx\n\t"
+		"movb %%dl, (%[s], %q[i])\n\t"
+		"addl %%ecx, %%edx\n\t"
+		"movb %%cl, (%[s], %q[j])\n\t"
+		"movzbl %%dl, %%edx\n\t"
+		"movb (%[s], %%rdx), %%cl\n\t"
+		"xorb %%cl, (%[stream])\n\t"
+		// stream++
+		"incq %[stream]\n\t"
+		"cmpq %[stream], %[end]\n\t"
+		"jbe 6f\n\t"
+		"testq $7, %[stream]\n\t"
+		"jne 1b\n\t"
+		"2:\n\t"
+
 		// 中间对齐的部分，每次处理 8 字节
-		"lea 8(%[in]), %%r8\n\t"
+		"lea 8(%[stream]), %%r8\n\t"
 		"cmpq %%r8, %[end]\n\t"
 		"jbe 4f\n\t"
 		"3:\n\t"
@@ -70,19 +99,19 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 		"movzbl %%dl, %%edx\n\t"
 		"shl $8, %%r8\n\t"
 		"movb (%[s], %%rdx), %%r8b\n\t"
-		// packet++
-		"incq %[in]\n\t"
-		"testq $7, %[in]\n\t"
+		// stream++
+		"incq %[stream]\n\t"
+		"testq $7, %[stream]\n\t"
 		"jne 3b\n\t"
 		"bswap %%r8\n\t"
-		"xorq %%r8, -8(%[in])\n\t"
-		"lea 8(%[in]), %%r8\n\t"
+		"xorq %%r8, -8(%[stream])\n\t"
+		"lea 8(%[stream]), %%r8\n\t"
 		"cmpq %%r8, %[end]\n\t"
 		"jg 3b\n\t"
 		"4:\n\t"
 
 		// 末尾未对齐的部分，每次处理 1 字节
-		"cmpq %[in], %[end]\n\t"
+		"cmpq %[stream], %[end]\n\t"
 		"jbe 6f\n\t"
 		"5:\n\t"
 		// i = (i + 1) & 255
@@ -92,34 +121,32 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 		"movzbl (%[s], %q[i]), %%ecx\n\t"
 		"addb %%cl, %b[j]\n\t"
 		// SWAP(s[i], s[j])
-		// *((uint8_t *)in) ^= s[(s[i] + s[j]) & 255]
+		// *((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255]
 		"movzbl (%[s], %q[j]), %%edx\n\t"
 		"movb %%dl, (%[s], %q[i])\n\t"
 		"addl %%ecx, %%edx\n\t"
 		"movb %%cl, (%[s], %q[j])\n\t"
 		"movzbl %%dl, %%edx\n\t"
 		"movb (%[s], %%rdx), %%cl\n\t"
-		"xorb %%cl, (%[in])\n\t"
-		// packet++
-		"incq %[in]\n\t"
-		"cmpq %[in], %[end]\n\t"
+		"xorb %%cl, (%[stream])\n\t"
+		// stream++
+		"incq %[stream]\n\t"
+		"cmpq %[stream], %[end]\n\t"
 		"jg 5b\n\t"
 		"6:\n\t"
 		:
-		: [in] "r"(in),
-		  [out] "r"(out),
-		  [end] "g"(in+ len),
-		  [s] "r"(s),
-		  [i] "a"(0),
-		  [j] "b"(0)
+		: [stream] "r" (stream),
+		  [end] "g" (stream + len),
+		  [s] "r" (s),
+		  [i] "a" (0),
+		  [j] "b" (0)
 		: "memory", "rcx", "rdx", "r8"
 	);
 #  elif defined(__i386__)
 #    define RC4_ASM 1
-	assert(((long)out & 0x03) == 0);
-	assert(((long)in & 0x03) == 0);
+	assert(((long)stream & 0x03) == 0);
 	__asm__ __volatile__ (
-		"cmpl %[packet], %[end]\n\t"
+		"cmpl %[stream], %[end]\n\t"
 		"je 2f\n\t"
 		"1:\n\t"
 		/* i = (i + 1) & 255; */
@@ -129,34 +156,32 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 		"movzbl (%[s], %[i]), %%ecx\n\t"
 		"addb %%cl, %b[j]\n\t"
 		/* SWAP(s[i], s[j]); */
-		/* *((uint8_t *)packet) ^= s[(s[i] + s[j]) & 255]; */
+		/* *((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255]; */
 		"movzbl (%[s], %[j]), %%edx\n\t"
 		"movb %%dl, (%[s], %[i])\n\t"
 		"addl %%ecx, %%edx\n\t"
 		"movb %%cl, (%[s], %[j])\n\t"
 		"movzbl %%dl, %%edx\n\t"
 		"movb (%[s], %%edx), %%cl\n\t"
-		"xorb %%cl, (%[packet])\n\t"
-		/* packet++ */
-		"incl %[packet]\n\t"
-		"cmpl %[packet], %[end]\n\t"
+		"xorb %%cl, (%[stream])\n\t"
+		/* stream++ */
+		"incl %[stream]\n\t"
+		"cmpl %[stream], %[end]\n\t"
 		"jne 1b\n\t"
 		"2:\n\t"
 		:
-		: [in] "r"(in),
-		  [out] "r"(out),
-		  [end] "g"(in+ len),
-		  [s] "r"(s),
-		  [i] "a"(0),
-		  [j] "b"(0)
+		: [stream] "r" (stream),
+		  [end] "g" (stream + len),
+		  [s] "r" (s),
+		  [i] "a" (0),
+		  [j] "b" (0)
 		: "memory", "ecx", "edx"
 	);
 #  elif defined(__arm__)
 #    define RC4_ASM 1
-	assert(((long)out & 0x03) == 0);
-	assert(((long)in & 0x03) == 0);
+	assert(((long)stream & 0x03) == 0);
 	__asm__ __volatile__ (
-		"cmp %[in], %[end]\n\t"
+		"cmp %[stream], %[end]\n\t"
 		"bcs 2f\n\t"
 		"1:\n\t"
 		/* i = (i + 1) & 255; */
@@ -167,26 +192,25 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 		"add %[j], %[j], r4\n\t"
 		"and %[j], %[j], #255\n\t"
 		/* SWAP(s[i], s[j]); */
-		/* *((uint8_t *)packet) ^= s[(s[i] + s[j]) & 255]; */
+		/* *((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255]; */
 		"ldrb r5, [%[s], %[j]]\n\t"
 		"strb r5, [%[s], %[i]]\n\t"
-		"ldrb r6, [%[packet]]\n\t"
+		"ldrb r6, [%[stream]]\n\t"
 		"add r5, r5, r4\n\t"
 		"strb r4, [%[s], %[j]]\n\t"
 		"and r5, r5, #255\n\t"
 		"ldrb r7, [%[s], r5]\n\t"
 		"eor r6, r6, r7\n\t"
-		"strb r6, [%[packet]], #1\n\t"
-		"cmp %[packet], %[end]\n\t"
+		"strb r6, [%[stream]], #1\n\t"
+		"cmp %[stream], %[end]\n\t"
 		"bne 1b\n\t"
 		"2:\n\t"
 		:
-		: [in] "r"(in),
-		  [out] "r"(out),
-		  [end] "r"(in+ len),
+		: [stream] "r"(stream),
+		  [end] "r"(stream + len),
 		  [s] "r"(s),
-		  [i] "r"(0),
-		  [j] "r"(0)
+		  [i] "r" (0),
+		  [j] "r" (0)
 		: "memory", "r4", "r5", "r6", "r7"
 	);
 #  endif
@@ -195,37 +219,47 @@ static void rc4(void *out, void *in, size_t len, const void *key, size_t key_len
 #ifndef RC4_ASM
 	i = 0;
 	j = 0;
-	register uint8_t *end = (uint8_t *)in + len;
-	for (; (uint8_t *)in < end; in++, out++)
+	register uint8_t *end = (uint8_t *)stream + len;
+	for (; (uint8_t *)stream < end; stream++)
 	{
 		i = (i + 1) & 255;
 		j = (j + s[i]) & 255;
 		SWAP(s[i], s[j]);
-		*((uint8_t *)out) = *((uint8_t *)in) ^ s[(s[i] + s[j]) & 255];
+		*((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255];
 	}
 #endif
 }
 
-// IV = md5(in)
-// out = IV + rc4(in , md5(IV + key))
-void encrypt(void *out, void *in, size_t len, const void *key, size_t key_len)
+static char key[32];
+
+void crypto_set_key(const void *_key)
 {
-	char real_key[16];
-	md5(out, in, len);
-	memcpy(out + 16, key, key_len);
-	md5(real_key, out, 16 + key_len);
-	rc4(out + 16, in, len, real_key, 16);
+	memcpy(key + 16, _key, 16);
 }
 
-int decrypt(void *out, void *in, size_t len, const void *key, size_t key_len)
+void crypto_encrypt(void *buf, size_t len)
 {
-	char real_key[16];
-	memcpy(out, in, 16);
-	memcpy(out + 16, key, key_len);
-	md5(real_key, out, 16 + key_len);
-	rc4(out, in + 16, len - 16, real_key, 16);
-	md5(real_key, out, len - 16);
-	if (memcmp(real_key, in, 16) == 0)
+	char enc_key[16];
+	// IV = md5(tun)
+	md5(buf, buf + IV_LEN, len);
+	// enc_key = md5(IV + key)
+	memcpy(key, buf, IV_LEN);
+	md5(enc_key, key, IV_LEN + 16);
+	// rc4
+	rc4(buf + IV_LEN, len, enc_key);
+}
+
+int crypto_decrypt(void *buf, size_t len)
+{
+	char dec_key[16];
+	// dec_key = md5(IV + key)
+	memcpy(key, buf, IV_LEN);
+	md5(dec_key, key, IV_LEN + 16);
+	// rc4
+	rc4(buf + IV_LEN, len - IV_LEN, dec_key);
+	// check if IV == md5(tun)
+	md5(dec_key, buf + IV_LEN, len - IV_LEN);
+	if (memcmp(dec_key, buf, 16) == 0)
 	{
 		return 0;
 	}

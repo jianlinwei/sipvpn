@@ -1,5 +1,5 @@
 /*
- * log.c - log functions
+ * log.c
  *
  * Copyright (C) 2014 - 2015, Xiaoxiao <i@xiaoxiao.im>
  *
