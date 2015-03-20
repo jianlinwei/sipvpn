@@ -103,8 +103,7 @@ am_sipvpn_OBJECTS = conf.$(OBJEXT) encrypt.$(OBJEXT) log.$(OBJEXT) \
 	main.$(OBJEXT) md5.$(OBJEXT) tunif.$(OBJEXT) utils.$(OBJEXT) \
 	vpn.$(OBJEXT)
 sipvpn_OBJECTS = $(am_sipvpn_OBJECTS)
-am__DEPENDENCIES_1 =
-sipvpn_DEPENDENCIES = $(am__DEPENDENCIES_1)
+sipvpn_DEPENDENCIES =
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
 am__v_P_0 = false
@@ -253,7 +252,7 @@ sipvpn_SOURCES = \
     conf.c  encrypt.c  log.c  main.c  md5.c  tunif.c  utils.c  vpn.c \
     conf.h  encrypt.h  log.h  md5.h  tunif.h  utils.h  vpn.h
 
-sipvpn_LDADD = $(LIBS)
+sipvpn_LDADD = 
 all: all-am
 
 .SUFFIXES:

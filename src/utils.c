@@ -53,11 +53,11 @@ int runas(const char *user)
 
 	if (pw_ent != NULL)
 	{
-		if (setgid(pw_ent->pw_gid) != 0)
+		if (setegid(pw_ent->pw_gid) != 0)
 		{
 			return -1;
 		}
-		if (setuid(pw_ent->pw_uid) != 0)
+		if (seteuid(pw_ent->pw_uid) != 0)
 		{
 			return -1;
 		}

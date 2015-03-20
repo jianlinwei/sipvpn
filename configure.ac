@@ -22,7 +22,7 @@ AM_CONDITIONAL(STATIC, test x"$static" = x"true")
 AC_ARG_ENABLE(
     [debug],
     [AS_HELP_STRING([--enable-debug], [build with additional debugging code])],
-    [CFLAGS="$CFLAGS -g -DDEBUG -Og"])
+    [CFLAGS="$CFLAGS -g -DDEBUG -O0"])
 AM_CONDITIONAL(DEBUG, test x"$debug" = x"true")
 AC_ARG_ENABLE(
     [coverage],
@@ -47,7 +47,7 @@ AC_TYPE_UINT8_T
 
 # Checks for library functions.
 AC_FUNC_FORK
-AC_CHECK_FUNCS([bzero select setenv setuid socket strchr strerror])
+AC_CHECK_FUNCS([bzero select setenv setuid sigaction socket strchr strerror])
 
 AC_CONFIG_FILES([Makefile
                  src/Makefile])

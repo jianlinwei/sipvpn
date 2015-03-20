@@ -4113,7 +4113,7 @@ fi
 
 # Check whether --enable-debug was given.
 if test "${enable_debug+set}" = set; then :
-  enableval=$enable_debug; CFLAGS="$CFLAGS -g -DDEBUG -Og"
+  enableval=$enable_debug; CFLAGS="$CFLAGS -g -DDEBUG -O0"
 fi
 
  if test x"$debug" = x"true"; then
@@ -4891,7 +4891,7 @@ $as_echo "#define HAVE_WORKING_FORK 1" >>confdefs.h
 
 fi
 
-for ac_func in bzero select setenv setuid socket strchr strerror
+for ac_func in bzero select setenv setuid sigaction socket strchr strerror
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
 ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"

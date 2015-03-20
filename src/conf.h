@@ -31,7 +31,6 @@ typedef enum
 
 typedef struct
 {
-	int verbose;
 	int daemon;
 	vpnmode_t mode;
 	int mtu;
@@ -43,11 +42,8 @@ typedef struct
 	char port[16];
 	char key[64];
 	char tunif[32];
-	struct
-	{
-		char up[64];
-		char down[64];
-	} hook;
+	char up[64];
+	char down[64];
 } conf_t;
 
 extern int parse_args(int argc, char **argv, conf_t *conf);

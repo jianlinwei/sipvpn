@@ -25,6 +25,10 @@
 #include "utils.h"
 #include "vpn.h"
 
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
+
 static void signal_cb(int signo)
 {
 	assert((signo == SIGINT) || (signo == SIGTERM));
@@ -49,9 +53,18 @@ int main(int argc, char **argv)
 		}
 	}
 
-	signal(SIGABRT, SIG_IGN);
+	// 注册 signal handle
+#ifdef HAVE_SIGACTION
+	struct sigaction sa;
+	sa.sa_handler = signal_cb;
+	sigemptyset(&sa.sa_mask);
+	sa.sa_flags = SA_RESTART;
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+#else
 	signal(SIGINT, signal_cb);
 	signal(SIGTERM, signal_cb);
+#endif
 
 	if (vpn_init(&conf) != 0)
 	{

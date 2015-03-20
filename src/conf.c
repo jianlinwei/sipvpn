@@ -22,7 +22,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include "conf.h"
-#include "config.h"
+
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#else
+#  define PACKAGE "sipvpn"
+#  define PACKAGE_BUGREPORT "https://github.com/XiaoxiaoPu/sipvpn/issues"
+#  defien VERSION "0.1.0"
+#endif
 
 #define LINE_MAX 1024
 
@@ -34,7 +41,6 @@ static void help(void)
 	       "  -d, --daemon         daemonize after initialization\n"
 	       "  --pidfile <file>     PID file\n"
 	       "  --logfile <file>     log file\n"
-	       "  -v, --verbose        verbose logging\n"
 	       "  -V, --version        print version and exit\n\n"
 	       "Bug report: <%s>.\n", PACKAGE, PACKAGE_BUGREPORT);
 }
@@ -158,11 +164,11 @@ int read_conf(const char *file, conf_t *conf)
 		}
 		else if (strcmp(key, "up") == 0)
 		{
-			_strncpy(conf->hook.up, value, sizeof(conf->hook.up));
+			_strncpy(conf->up, value, sizeof(conf->up));
 		}
 		else if (strcmp(key, "down") == 0)
 		{
-			_strncpy(conf->hook.down, value, sizeof(conf->hook.down));
+			_strncpy(conf->down, value, sizeof(conf->down));
 		}
 	}
 	fclose(f);
@@ -216,10 +222,6 @@ int parse_args(int argc, char **argv, conf_t *conf)
 			}
 			_strncpy(conf->logfile, argv[i + 1], sizeof(conf->logfile));
 			i++;
-		}
-		else if ((strcmp(argv[i], "-v") == 0) || (strcmp(argv[i], "--verbose") == 0))
-		{
-			conf->verbose = 1;
 		}
 		else if ((strcmp(argv[i], "-V") == 0) || (strcmp(argv[i], "--version") == 0))
 		{

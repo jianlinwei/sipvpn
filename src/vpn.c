@@ -37,7 +37,6 @@ static const conf_t *conf;
 
 static volatile int running;
 static int tun;
-static char tun_name[32];
 static int sock;
 static struct
 {
@@ -50,32 +49,13 @@ static uint8_t tun_buf[MTU_MAX];
 
 int vpn_init(const conf_t *config)
 {
+	char tun_name[32];
+
 	conf = config;
 
-	// 初始化 tun 设备
-	strcpy(tun_name, conf->tunif);
-	tun = tun_new(tun_name);
-	if (tun < 0)
-	{
-		LOG("failed to init tun device");
-		return -1;
-	}
-	else if (conf->verbose)
-	{
-		LOG("using tun device: %s", tun_name);
-	}
+	LOG("starting sipvpn %s", (conf->mode==server)?"server":"client");
 
-	// 执行 up hook
-	if (conf->hook.up[0] != '\0')
-	{
-		LOG("executing %s", conf->hook.up);
-		int r = shell(conf->hook.up);
-		if (r != 0)
-		{
-			LOG("%s returned %d", conf->hook.up, r);
-		}
-	}
-
+	// 初始化 UDP socket
 	struct addrinfo hints;
 	struct addrinfo *res;
 	bzero(&hints, sizeof(struct addrinfo));
@@ -94,13 +74,16 @@ int vpn_init(const conf_t *config)
 		freeaddrinfo(res);
 		return -1;
 	}
+	setnonblock(sock);
 	if (conf->mode == client)
 	{
+		// client
 		memcpy(&remote.addr, res->ai_addr, res->ai_addrlen);
 		remote.addrlen = res->ai_addrlen;
 	}
 	else
 	{
+		// server
 		if (bind(sock, res->ai_addr, res->ai_addrlen) != 0)
 		{
 			ERROR("bind");
@@ -111,7 +94,34 @@ int vpn_init(const conf_t *config)
 	}
 	freeaddrinfo(res);
 
-	setnonblock(sock);
+	// 初始化 tun 设备
+	strcpy(tun_name, conf->tunif);
+	tun = tun_new(tun_name);
+	if (tun < 0)
+	{
+		LOG("failed to init tun device");
+		return -1;
+	}
+	if (strcmp(tun_name, conf->tunif) != 0)
+	{
+		setenv("tunif", tun_name, 1);
+	}
+	LOG("using tun device: %s", tun_name);
+
+	// 执行 up hook
+	if (conf->up[0] != '\0')
+	{
+		LOG("executing up hook: %s", conf->up);
+		int r = shell(conf->up);
+		if (r == 0)
+		{
+			LOG("done");
+		}
+		else
+		{
+			LOG("error: %d", r);
+		}
+	}
 
 	// drop root privilege
 	if (conf->user[0] != '\0')
@@ -189,13 +199,6 @@ int vpn_run(void)
 						ERROR("sendto");
 					}
 				}
-				else
-				{
-					if (conf->verbose)
-					{
-						LOG("send %ld bytes to remote", n);
-					}
-				}
 			}
 		}
 
@@ -219,10 +222,6 @@ int vpn_run(void)
 			{
 				continue;
 			}
-			else if (conf->verbose)
-			{
-				LOG("recv %ld bytes from remote", n);
-			}
 
 			// 解密
 			if (decrypt(tun_buf, udp_buf, n, conf->key, conf->key_len) != 0)
@@ -243,10 +242,6 @@ int vpn_run(void)
 						ERROR("tun_write");
 					}
 				}
-				else if (conf->verbose)
-				{
-					LOG("write %ld bytes to %s", n, tun_name);
-				}
 			}
 		}
 	}
@@ -261,26 +256,22 @@ int vpn_run(void)
 	}
 
 	// 执行 down hook
-	if (conf->hook.down[0] != '\0')
+	if (conf->down[0] != '\0')
 	{
-		LOG("executing %s", conf->hook.down);
-		int r = shell(conf->hook.down);
-		if (r != 0)
+		LOG("executing down hook: %s", conf->down);
+		int r = shell(conf->down);
+		if (r == 0)
 		{
-			LOG("%s returned %d", conf->hook.down, r);
+			LOG("done");
+		}
+		else
+		{
+			LOG("error: %d", r);
 		}
 	}
 
-	if (running == 0)
-	{
-		LOG("exit gracefully");
-		return EXIT_SUCCESS;
-	}
-	else
-	{
-		LOG("exit error");
-		return EXIT_FAILURE;
-	}
+	LOG("exit");
+	return (running == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 void vpn_stop(void)

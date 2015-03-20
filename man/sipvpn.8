@@ -1,4 +1,4 @@
-.TH SIPVPN 8 "Mar 19, 2015"
+.TH SIPVPN 8 "Mar 20, 2015"
 .SH NAME
 sipvpn \- Simple stateless VPN
 
@@ -24,10 +24,7 @@ daemonize after initialization
 PID file
 .TP
 .B \-\-logfile \fI<file>\fR
-Log file
-.TP
-.B \-v, \-\-verbose
-verbose logging
+log file
 .TP
 .B \-V, \-\-version
 print version and exit
@@ -84,25 +81,27 @@ hook script to run before quit
 
 Sample client config file:
 
+    user=nobody
     mode=client
     server=1.2.3.4
     port=1205
     password=zwa2MAgkoFP7
     tunif=vpn0
     mtu=1400
-    up=/etc/sipvpn/hook/client_up.sh
-    down=/etc/sipvpn/hook/client_down.sh
+    up=/etc/sipvpn/hooks/client_up.sh
+    down=/etc/sipvpn/hooks/client_down.sh
 
 Sample server config file:
 
+    user=nobody
     mode=client
     server=0.0.0.0
     port=1205
     password=zwa2MAgkoFP7
     tunif=vpn0
     mtu=1400
-    up=/etc/sipvpn/hook/server_up.sh
-    down=/etc/sipvpn/hook/server_down.sh
+    up=/etc/sipvpn/hooks/server_up.sh
+    down=/etc/sipvpn/hooks/server_down.sh
 
 .SH AUTHOR
 .PP
