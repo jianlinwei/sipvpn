@@ -29,8 +29,8 @@
 2. build
 
 	```bash
-	autoreconf -i -f
-	./configure --host=arm-unknown-linux-gnueabi \
+	autoreconf -if
+	./configure --host=arm-unknown-linux-gnueabihf \
 	    --prefix=/usr --sysconfdir=/etc
 	make
 	```
