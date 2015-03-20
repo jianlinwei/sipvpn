@@ -52,7 +52,7 @@ int vpn_init(const conf_t *config)
 
 	conf = config;
 
-	LOG("starting sipvpn %s", (conf->mode==server)?"server":"client");
+	LOG("starting sipvpn %s", (conf->mode == server) ? "server" : "client");
 
 	// set crypto key
 	crypto_set_key(conf->key);
@@ -207,6 +207,7 @@ int vpn_run(void)
 		if (FD_ISSET(sock, &readset))
 		{
 			// 读取 UDP 包
+			remote.addrlen = sizeof(struct sockaddr_storage);
 			n = recvfrom(sock, buf, conf->mtu + IV_LEN, 0,
 			             (struct sockaddr *)&remote.addr, &remote.addrlen);
 			if (n < 0)

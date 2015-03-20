@@ -30,7 +30,6 @@
 
 #define SWAP(x, y) do {register uint8_t tmp = (x); (x) = (y); (y) = tmp; } while (0)
 
-// stream 必须 sizeof(long) 字节对齐
 static void rc4(void *stream, size_t len, const void *key)
 {
 	register int i, j;
@@ -50,40 +49,11 @@ static void rc4(void *stream, size_t len, const void *key)
 #    define RC4_ASM 1
 	assert(((long)stream & 0x07) == 0);
 	__asm__ __volatile__ (
-		/* 开头未对齐的部分，每次处理 1 字节 */
-		"cmpq %[stream], %[end]\n\t"
-		"jbe 6f\n\t"
-		"testq $7, %[stream]\n\t"
-		"je 2f\n\t"
-		"1:\n\t"
-		// i = (i + 1) & 255
-		"incl %[i]\n\t"
-		"movzbl %b[i], %[i]\n\t"
-		// j = (j + s[i] ) & 255
-		"movzbl (%[s], %q[i]), %%ecx\n\t"
-		"addb %%cl, %b[j]\n\t"
-		// SWAP(s[i], s[j])
-		// *((uint8_t *)stream) ^= s[(s[i] + s[j]) & 255]; */
-		"movzbl (%[s], %q[j]), %%edx\n\t"
-		"movb %%dl, (%[s], %q[i])\n\t"
-		"addl %%ecx, %%edx\n\t"
-		"movb %%cl, (%[s], %q[j])\n\t"
-		"movzbl %%dl, %%edx\n\t"
-		"movb (%[s], %%rdx), %%cl\n\t"
-		"xorb %%cl, (%[stream])\n\t"
-		// stream++
-		"incq %[stream]\n\t"
-		"cmpq %[stream], %[end]\n\t"
-		"jbe 6f\n\t"
-		"testq $7, %[stream]\n\t"
-		"jne 1b\n\t"
-		"2:\n\t"
-
-		// 中间对齐的部分，每次处理 8 字节
+		// 每次处理 8 字节
 		"lea 8(%[stream]), %%r8\n\t"
 		"cmpq %%r8, %[end]\n\t"
-		"jbe 4f\n\t"
-		"3:\n\t"
+		"jbe 2f\n\t"
+		"1:\n\t"
 		// i = (i + 1) & 255
 		"incl %[i]\n\t"
 		"movzbl %b[i], %[i]\n\t"
@@ -102,18 +72,18 @@ static void rc4(void *stream, size_t len, const void *key)
 		// stream++
 		"incq %[stream]\n\t"
 		"testq $7, %[stream]\n\t"
-		"jne 3b\n\t"
+		"jne 1b\n\t"
 		"bswap %%r8\n\t"
 		"xorq %%r8, -8(%[stream])\n\t"
 		"lea 8(%[stream]), %%r8\n\t"
 		"cmpq %%r8, %[end]\n\t"
-		"jg 3b\n\t"
-		"4:\n\t"
+		"jg 1b\n\t"
+		"2:\n\t"
 
 		// 末尾未对齐的部分，每次处理 1 字节
 		"cmpq %[stream], %[end]\n\t"
-		"jbe 6f\n\t"
-		"5:\n\t"
+		"jbe 4f\n\t"
+		"3:\n\t"
 		// i = (i + 1) & 255
 		"incl %[i]\n\t"
 		"movzbl %b[i], %[i]\n\t"
@@ -132,8 +102,8 @@ static void rc4(void *stream, size_t len, const void *key)
 		// stream++
 		"incq %[stream]\n\t"
 		"cmpq %[stream], %[end]\n\t"
-		"jg 5b\n\t"
-		"6:\n\t"
+		"jg 3b\n\t"
+		"4:\n\t"
 		:
 		: [stream] "r" (stream),
 		  [end] "g" (stream + len),
@@ -144,7 +114,6 @@ static void rc4(void *stream, size_t len, const void *key)
 	);
 #  elif defined(__i386__)
 #    define RC4_ASM 1
-	assert(((long)stream & 0x03) == 0);
 	__asm__ __volatile__ (
 		"cmpl %[stream], %[end]\n\t"
 		"je 2f\n\t"
@@ -179,7 +148,6 @@ static void rc4(void *stream, size_t len, const void *key)
 	);
 #  elif defined(__arm__)
 #    define RC4_ASM 1
-	assert(((long)stream & 0x03) == 0);
 	__asm__ __volatile__ (
 		"cmp %[stream], %[end]\n\t"
 		"bcs 2f\n\t"

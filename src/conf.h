@@ -34,13 +34,13 @@ typedef struct
 	int daemon;
 	vpnmode_t mode;
 	int mtu;
-	char user[16];
 	char pidfile[64];
 	char logfile[64];
+	char user[16];
 	char server[64];
 	char port[16];
 	char key[16];
-	char tunif[32];
+	char tunif[16];
 	char up[64];
 	char down[64];
 } conf_t;
