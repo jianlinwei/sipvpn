@@ -44,7 +44,7 @@ static void rc4(void *stream, size_t len, const void *key)
 		SWAP(s[i], s[j]);
 	}
 
-#if defined(__GNUC__) && defined(USE_ASSEMBLY)
+#ifdef __GNUC__
 #  if defined(__amd64__) || defined(__x86_64__)
 #    define RC4_ASM 1
 	assert(((long)stream & 0x07) == 0);

@@ -28,10 +28,6 @@ AC_ARG_ENABLE(
     [coverage],
     [AS_HELP_STRING([--enable-coverage], [enable coverage analysis])],
     [CFLAGS="$CFLAGS -fprofile-arcs -ftest-coverage"])
-AC_ARG_ENABLE(
-    [assembly],
-    [AS_HELP_STRING([--enable-assembly], [enable inline assembly])],
-    [AC_DEFINE([USE_ASSEMBLY], [1], [enable inline assembly])])
 
 # Checks for header files.
 AC_HEADER_ASSERT
