@@ -1,7 +1,7 @@
 # Maintainer:  Xiaoxiao Pu <i@xiaoxiao.im>
 
 pkgname=sipvpn-git
-pkgver=r2.db4ec99
+pkgver=r9.3f54cd6
 pkgrel=1
 pkgdesc="Simple stateless VPN"
 arch=('i686' 'x86_64')
@@ -20,6 +20,7 @@ pkgver() {
 
 build() {
 	cd "${srcdir}/sipvpn"
+	autoreconf -if
 	./configure --prefix=/usr --sysconfdir=/etc
 	make
 }
